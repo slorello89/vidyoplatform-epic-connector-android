@@ -522,34 +522,50 @@ public class MainActivity extends Activity implements
             String vidyoSubString = "vidyo://join?";
             String protocolHandler = "";
             try{
+                //build request URL: should consist of a portal and the encrypted data
                 String requestUrl = String.format("%1$s/join/?extDataType=1&extData=%2$s",portal,epicData);
                 response =new GetEpicdata().execute(requestUrl).get();
+                //Response will be a full HTML page - we just want to find the protocol handler that is meant to launch the conference, it'll be formatted something like this:
+                //  vidyo://join?portal=https://epic-vvp7.vidyoqa.com&f=FFFF&roomKey=RRRR&extData=EEEE&extDataType=1&pin=false&dispName=SOMENAME
+                //lets go find the protocl handler
                 int index_of_protocol_handler = response.indexOf(vidyoSubString);
                 if (index_of_protocol_handler != -1){
                     int index_of_end_protocol_handler = response.indexOf("\"", index_of_protocol_handler);
+                    //extract the protocl handler
                     protocolHandler = response.substring(index_of_protocol_handler,index_of_end_protocol_handler);
-                }
-                Map<String, String> params = splitQuery(protocolHandler);
-                portal = params.get("portal");
-                roomKey = params.get("roomKey");
-                displayName = params.get("dispName");
-                String extData = params.get("extData");
-                roomPin = !params.get("pin").equals("false") ? params.get("pin"): "";
-                String advancedOptions = String.format("{ \"extDataType\": \"1\", \"extData\": \"%1$s\" }",extData);
-                mVidyoConnector.setAdvancedOptions(advancedOptions);
-                mRoomKey.setText(roomKey);
-                mDisplayName.setText(displayName);
-                if (!mVidyoConnector.connectToRoomAsGuest(
-                        portal,
-                        displayName.trim(),
-                        roomKey,
-                        roomPin,
-                        this)) {
-                    // Connect failed.
-                    this.changeState(VidyoConnectorState.Failure);
+
+                    //split the protocl handler into an indexable map
+                    Map<String, String> params = splitQuery(protocolHandler);
+
+                    //get the required parameters from the map
+                    portal = params.get("portal");
+                    roomKey = params.get("roomKey");
+                    displayName = params.get("dispName");
+                    String extData = params.get("extData");
+                    roomPin = !params.get("pin").equals("false") ? params.get("pin"): "";
+
+                    //set the extData for advanced options
+                    String advancedOptions = String.format("{ \"extDataType\": \"1\", \"extData\": \"%1$s\" }",extData);
+                    mVidyoConnector.setAdvancedOptions(advancedOptions);
+
+                    //set the roomkey/display name
+                    mRoomKey.setText(roomKey);
+                    mDisplayName.setText(displayName);
+
+                    //connect to room as guest
+                    if (!mVidyoConnector.connectToRoomAsGuest(
+                            portal,
+                            displayName.trim(),
+                            roomKey,
+                            roomPin,
+                            this)) {
+                        // Connect failed.
+                        this.changeState(VidyoConnectorState.Failure);
+                    }
+
+                    System.out.println(protocolHandler);
                 }
 
-                System.out.println(protocolHandler);
             }
             catch (Exception e){
                 e.printStackTrace();
